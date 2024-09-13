@@ -60,10 +60,20 @@ end
 
 # Test 3D-VAR
 @testset "VAR-AutoDiff" begin
-    @test TestVarAD.testCost()
-    @test TestVarAD.testGrad()
-    @test TestVarAD.testNewton()
-    @test TestVarAD.testNewtonNoise()
+    @test TestVarAD.test3DCost()
+    @test TestVarAD.test3DGrad()
+    @test TestVarAD.test3DNewton()
+    @test TestVarAD.test3DNewtonNoise()
+    @test TestVarAD.test3DCycle()
+    @test TestVarAD.test4DLag1Cost()
+    @test TestVarAD.test4DLag1Grad()
+    @test TestVarAD.test4DLag1Newton()
+    @test TestVarAD.test4DLag1NewtonNoise()
+    @test TestVarAD.test4DLag1Cycle()
+    @test TestVarAD.test4DLagLCost()
+    @test TestVarAD.test4DLagLGrad()
+    @test TestVarAD.test4DLagLNewton()
+    @test TestVarAD.test4DLagLCycle()
 end
 
 # Test filter state and parameter experiments

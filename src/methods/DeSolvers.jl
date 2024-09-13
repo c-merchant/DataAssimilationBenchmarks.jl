@@ -24,7 +24,7 @@ function rk4_step!(x::VecA(T), t::Float64, kwargs::StepKwargs) where T <: Real
 
     if haskey(kwargs, "dx_params")
         # get parameters for resolving dx_dt
-        dx_params = kwargs["dx_params"]::ParamDict(T)
+        dx_params = kwargs["dx_params"]
     end
 
     # infer the (possibly) extended state dimension
