@@ -453,7 +453,7 @@ function test4DLagLCost()
     # compute cost function
     cost = D4_var_lagL_cost(x_b, y_stacked, x_b, state_cov, H_obs, obs_cov, lag, shift, kwargs)
 
-    if abs(cost - 1455.627) < 0.001
+    if abs(cost - 7160.686) < 0.001
         true
     else
         false
@@ -529,7 +529,7 @@ function test4DLagLGrad()
     # compute gradient
     grad = ForwardDiff.gradient(wrap_cost, x)
 
-    if abs(sum(grad + (ones(40) * 11.6538))) < 0.0021
+    if abs(sum(grad + (ones(40) * 55.3458))) < 0.001
         true
     else
         false
@@ -598,7 +598,7 @@ function test4DLagLNewton()
     # perform Newton optimization
     op = D4_var_lagL_NewtonOp(x_b, y_stacked, state_cov, H_obs, obs_cov, lag, shift, kwargs)
 
-    if abs(sum(op - ones(40) * 5.1819)) < 0.001
+    if abs(sum(op - ones(40) * 7.15283)) < 0.001
         true
     else
         false

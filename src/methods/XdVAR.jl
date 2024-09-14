@@ -382,28 +382,25 @@ arguments needed for the operation computation.
 return  0.5*back_component + 0.5*obs_component
 ```
 """
-function D4_var_lagL_cost(x::AbstractVector{T1}, obs::ArView(T2), x_bkg::VecA(T2), state_cov::CovM(T2),
-                          H_obs::Function, obs_cov::CovM(T2), L::Int64, S::Int64, kwargs::StepKwargs) where T1 <: Real where T2 <: Float64
-    
+function D4_var_lagL_cost(x::AbstractVector{T1}, obs::AbstractArray{T2}, x_bkg::AbstractVector{T2}, state_cov::AbstractMatrix{T2},
+                          H_obs::Function, obs_cov::AbstractMatrix{T2}, L::Int64, S::Int64, kwargs::StepKwargs) where T1 <: Real where T2 <: Float64
+
     # check that shift is valid
     if S < 1
         throw(ArgumentError("Shift must be greater than or equal to 1. Received input shift = $S."))
     end
 
-    # handle covariance matrices and inputs properly for Dual types
-    state_cov_inv = T1 <: ForwardDiff.Dual ? inv(convert(Diagonal{T1}, state_cov)) : inv(state_cov)
-    obs_cov_inv = T1 <: ForwardDiff.Dual ? inv(convert(Diagonal{T1}, obs_cov)) : inv(obs_cov)
+    # handle covariance matrices and inputs properly for Dual type
+    state_cov_inv = T1 <: ForwardDiff.Dual ? inv(Diagonal{T1}(state_cov)) : inv(state_cov)
+    obs_cov_inv = T1 <: ForwardDiff.Dual ? inv(Diagonal{T1}(obs_cov)) : inv(obs_cov)
 
     # initializations
-    # dimension of individual observation vectors
     obs_dim = size(obs, 1)
-    # dummy time variable for RK4 scheme
-    t = 0.0001       
-    # check that f_steps is in kwargs
-    f_steps = get(kwargs, "f_steps", 1)::Int64
+    t = 0.0001
+    f_steps = get(kwargs, :f_steps, 1)::Int64
 
     # check that lag doesn't exceed the number of observations in the obs array
-    max_obs_time = size(obs, ndims(obs))  # Get the max number of time steps available
+    max_obs_time = size(obs, ndims(obs))
     if L > max_obs_time
         throw(ArgumentError("Lag ($L) cannot exceed the number of available observation time steps ($max_obs_time)."))
     end
@@ -412,35 +409,43 @@ function D4_var_lagL_cost(x::AbstractVector{T1}, obs::ArView(T2), x_bkg::VecA(T2
     δ_b = x - x_bkg
     back_component = dot(δ_b, state_cov_inv * δ_b)
 
-    obs_component = 0
+    obs_component = 0.0
     x_new = copy(x)
 
-    # loop bounds incorporate data assimilation window shift
-    for k in 1:S:L
-        # break loop if k exceeds obs's available time steps
+    # shift the window by `S` steps at a time
+    for k in 1:S:max_obs_time
+        # check if the current window exceeds the available time steps
         if k > max_obs_time
             break
         end
 
-        # Evolve the state over f_steps using RK4
-        for i in 1:f_steps
-            rk4_step!(x_new, t, kwargs)
+        # check that the lag window's bounds aren't exceeded
+        if k + L - 1 > max_obs_time
+            L = max_obs_time - k + 1
         end
 
-        # apply observation operator at each step
-        H = H_obs(x_new, obs_dim, kwargs)
+        # loop over the lag window `L` steps
+        for l in 0:(L-1)
+            # evolve the state over `f_steps` using RK4
+            for i in 1:f_steps
+                rk4_step!(x_new, t, kwargs)
+            end
 
-        # handle 2D and 3D observation arrays
-        if ndims(obs) == 2
-            δ_o = obs[:, k] - H
-        elseif ndims(obs) == 3
-            δ_o = obs[:, :, k] - H
-        else
-            throw(DimensionMismatch("obs must be a 2D or 3D array."))
+            # apply the observation operator at the current time step
+            H = H_obs(x_new, obs_dim, kwargs)
+
+            # handle 2D and 3D observation arrays
+            if ndims(obs) == 2
+                δ_o = obs[:, k + l] - H
+            elseif ndims(obs) == 3
+                δ_o = obs[:, :, k + l] - H
+            else
+                throw(DimensionMismatch("obs must be a 2D or 3D array."))
+            end
+
+            # compute the observation component with observation covariance inverse
+            obs_component += dot(δ_o, obs_cov_inv * δ_o)
         end
-
-        # compute observation component with observation covariance inverse
-        obs_component += dot(δ_o, obs_cov_inv * δ_o)
     end
 
     return 0.5 * back_component + 0.5 * obs_component
